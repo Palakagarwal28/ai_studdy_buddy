@@ -1,11 +1,12 @@
 import streamlit as st
 import os
 import json
+import requests
 from groq import Groq
 from PIL import Image
 import pytesseract
 from dotenv import load_dotenv
-
+BACKEND_URL = "http://127.0.0.1:8000"
 # ---------- CONFIG ----------
 load_dotenv()
 st.set_page_config(page_title="AI Study Buddy", layout="centered")
@@ -22,34 +23,41 @@ st.write("An AI-powered study assistant for summaries, quizzes, flashcards, and 
 
 text = st.text_area("✍️ Enter study text", height=180)
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["📘 Summary", "📝 Quiz", "🗂️ Flashcards", "🖼️ Image Explain"]
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    [
+        "📝 Summary",
+        "🧠 Quiz",
+        "🗂️ Flashcards",
+        "🖼️ Image Explain",
+        "📺 YouTube"
+    ]
 )
+
+
 
 # ---------- SUMMARY ----------
 with tab1:
+    st.subheader("📘 Summary")
+
     if st.button("Generate Summary"):
-        if not text.strip():
-            st.warning("Please enter some text.")
-        else:
-            with st.spinner("Generating summary..."):
-                response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "Summarize the content in clear bullet points "
-                                "using simple student-friendly language."
-                            )
-                        },
-                        {"role": "user", "content": text}
-                    ]
-                )
-                st.markdown(response.choices[0].message.content)
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "Summarize the text for a student."},
+                {"role": "user", "content": text}
+            ]
+        )
+        summary = response.choices[0].message.content
+        st.success("Summary generated!")
+        st.write(summary)
+
+    st.divider()
+
+   
 
 # ---------- QUIZ ----------
 with tab2:
+    st.subheader("🧠 Quiz")
     if "quiz" not in st.session_state:
         st.session_state.quiz = []
         st.session_state.answers = {}
@@ -108,6 +116,7 @@ Text:
 
 # ---------- FLASHCARDS ----------
 with tab3:
+    st.subheader("🗂️ Flashcards")
     if st.button("Generate Flashcards"):
         if not text.strip():
             st.warning("Please enter some text.")
@@ -176,3 +185,25 @@ with tab4:
                 st.write(response.choices[0].message.content)
         else:
             st.warning("No readable text detected in the image.")
+with tab5:
+    st.subheader("📺 YouTube Learning Resources")
+
+    st.write(
+        "Get curated YouTube videos related to your study topic for deeper understanding."
+    )
+
+    if st.button("Get YouTube Videos"):
+        yt_response = requests.post(
+            f"{BACKEND_URL}/study/youtube",
+            json={"text": text}
+        )
+
+        if yt_response.status_code == 200:
+            videos = yt_response.json().get("youtube_links", [])
+
+
+            for v in videos:
+                st.markdown(f"🔗 [{v['title']}]({v['url']})")
+        else:
+            st.error("Failed to fetch YouTube videos")
+

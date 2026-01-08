@@ -151,5 +151,50 @@ async def generate_flashcards(request: StudyRequest):
         ]
     )
     return {"flashcards": response.choices[0].message.content}
+import json
+import urllib.parse
+
+@app.post("/study/youtube")
+async def generate_youtube_links(request: StudyRequest):
+    text = request.text
+
+    prompt = f"""
+From the topic or text below, suggest 5 useful YouTube search queries
+that a student can use to learn the topic.
+
+Rules:
+- Return ONLY valid JSON
+- Do not include explanations
+- Do not include markdown
+
+JSON format:
+{{
+  "topics": [
+    "search query 1",
+    "search query 2",
+    "search query 3"
+  ]
+}}
+
+Text:
+{text}
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    data = json.loads(response.choices[0].message.content)
+
+    youtube_links = []
+    for q in data["topics"]:
+        query = urllib.parse.quote(q)
+        youtube_links.append({
+            "title": q,
+            "url": f"https://www.youtube.com/results?search_query={query}"
+        })
+
+    return {"youtube_links": youtube_links}
 
 
